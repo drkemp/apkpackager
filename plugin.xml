@@ -17,11 +17,22 @@
   <dependency id="android.support.v4" />
   
   <js-module src="apkpackager.js" name="APKPackager">
-    <clobbers target="chrome.apkbuilder" />
+    <clobbers target="chrome.apkpackager" />
   </js-module>
 
   <platform name="android">
     <source-file src="src/android/APKPackager.java" target-dir="src/org/chromium" />
+
+    <source-file src="lib/libs/kellinwood-logging-android-1.4.jar" target-dir="libs" />
+    <source-file src="lib/libs/kellinwood-logging-lib-1.1.jar" target-dir="libs" />
+    <source-file src="lib/libs/kellinwood-logging-log4j-1.0.jar" target-dir="libs" />
+    <source-file src="lib/libs/core-1.50.0.0.jar" target-dir="libs" />
+    <source-file src="lib/libs/pkix-1.50.0.0.jar" target-dir="libs" />
+    <source-file src="lib/libs/prov-1.50.0.0.jar" target-dir="libs" />
+    <source-file src="lib/libs/sdklib-22.0.jar" target-dir="libs" />
+    <source-file src="lib/libs/zipio-lib-1.8.jar" target-dir="libs" />
+    <source-file src="lib/libs/zipsigner-lib-1.17.jar" target-dir="libs" />
+    <source-file src="lib/libs/zipsigner-lib-optional-1.16.jar" target-dir="libs" />
 
     <config-file target="res/xml/config.xml" parent="/widget">
       <feature name="APKPackager">

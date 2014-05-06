@@ -1,6 +1,7 @@
 
 
-function pkgSuccess( path ) {
+function pkgSuccess( apkpath ) {
+
 }
 
 function pkgFail(msg) {
@@ -9,11 +10,12 @@ function pkgFail(msg) {
 function onInitFs(fs) {
 
   // need a native compatible absolute path that ends with /
-  var workdir = fs.root.localURL();
+  var workdir = 'where is the dummy stuff and APK';
+  var wwwdir = 'where is your www';
   var publicKeyURL = "file://"+workdir+"pub.x509.pem";
   var privateKeyUrl = "file://"+workdir+"pk8p.pk8");
   var passwd="android";      // password for private key
-  exec(pkgSuccess, pkgFail, APKPackager, 'package', [publicKeyURL, privateKeyURL, passwd, workdir]);
+  exec(pkgSuccess, pkgFail, APKPackager, 'package', [wwwdir, workdir, publicKeyURL, privateKeyURL, passwd]);
 }
 
 function errorHander(msg) {
