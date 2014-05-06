@@ -6,10 +6,12 @@ package org.chromium;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.nio.channels.*;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipEntry;
 import java.io.BufferedInputStream;
@@ -69,15 +71,21 @@ public class APKPackager  extends CordovaPlugin {
         String resname =workdir+"res.zip";
         String assetsname =workdir+"assets.zip";
         String dexname = workdir+"classes.dex";
-        String maniname = workdir+"AndroidManifest.xml";
 
         // merge the supplied www & res dirs into the dummy project
         // for this to work the relative path of the supplied dir must be the same as the desired path in the APK
         // ie. ./foo/bar.png with be at /foo/bar.png in the APK
         String tempres = workdir+"tempres";
         String tempassets = workdir+"tempasset";
-        mergeDirectory(assetsname, wwwdir, tempassets);
-        mergeDirectory(resname, resdir, tempres);
+        extractToFolder(assetsname, wwwdir);
+        extractToFolder(resname, resdir);
+        try {
+            mergeDirectory(wwwdir, tempassets);
+            mergeDirectory(resdir, tempres);
+        } catch (Exception e) {
+            Log.e(LOG_TAG, e.getMessage());
+            callbackContext.error("Error merging assets: "+e.getMessage());
+        }
 
         // take the completed package and make the unsigned APK
         try{
@@ -85,9 +93,10 @@ public class APKPackager  extends CordovaPlugin {
             b.addSourceFolder(new File(tempassets));
             b.addSourceFolder(new File(tempres));
             // now mangle all the XML
-            // and add the binary XML and resource catalog
-            
-            b.addFile(new File(maniname),"AndroidManifest.xml");
+            String targetdir=workdir+"/binres";
+            mangleResources(workdir, targetdir);
+            b.addFile(new File(targetdir+"resources.arsc"), "resources.arsc");
+            b.addFile(new File(targetdir+"AndroidManifest.xml"),"AndroidManifest.xml");
             b.sealApk();
         } catch (Exception e) {
             Log.e(LOG_TAG, e.getMessage());
@@ -115,19 +124,54 @@ public class APKPackager  extends CordovaPlugin {
         }
         callbackContext.success(signedApkPath);
     }
+    private void mangleResources(String workdir, String targetdir) {
 
-    /* unpack the zip into a temp dir, overwrite stuff with the things in sourcedir 
+    }
+
+    /* overwrite stuff from a default zip with the things in sourcedir 
     */
-    private void mergeDirectory(String defaultZip, String sourceFilesDir, String workdir) {
-        extractToFolder(defaultZip, workdir);
-        
+    private void mergeDirectory(String sourceFilesDir, String workdir) 
+            throws FileNotFoundException, IOException {
+        File srcdir = new File(sourceFilesDir);
+        File[] files = srcdir.listFiles();
+        for(File file : files){
+            if(file.isDirectory()) {
+                String path = workdir+File.pathSeparator+file.getPath();
+                File targetDir = new File(path);
+                targetDir.mkdirs();
+                mergeDirectory(file.getPath(),path);
+            } else {
+                String path = workdir+File.pathSeparator+file.getParentFile().getPath();
+                File targetDir = new File(path);
+                targetDir.mkdirs();
+                File targetFile = new File(targetDir.getPath()+File.pathSeparator+file.getName());
+                copyFile(file, targetFile);
+            }
+        }
+    }
+
+    private void copyFile(File src, File dest)
+            throws FileNotFoundException, IOException {
+        FileInputStream istream = new FileInputStream(src);
+        FileOutputStream ostream = new FileOutputStream(dest);
+        FileChannel input = istream.getChannel();
+        FileChannel output = ostream.getChannel();
+
+        try {
+            input.transferTo(0, input.size(), output);
+        } finally {
+            istream.close();
+            ostream.close();
+            input.close();
+            output.close();
+        }
     }
 
     private void extractToFolder(String zipfile, String tempdir) {
     	InputStream inputStream=null;
     	try {
-        	FileInputStream zipStream = new FileInputStream(zipfile);
-        	inputStream = new BufferedInputStream(zipStream);
+            FileInputStream zipStream = new FileInputStream(zipfile);
+            inputStream = new BufferedInputStream(zipStream);
             ZipInputStream zis = new ZipInputStream(inputStream);
             inputStream = zis;
 
@@ -139,10 +183,10 @@ public class APKPackager  extends CordovaPlugin {
                 String compressedName = ze.getName();
 
                 if (ze.isDirectory()) {
-                   File dir = new File(tempdir + compressedName);
+                   File dir = new File(tempdir + File.pathSeparator + compressedName);
                    dir.mkdirs();
                 } else {
-                    File file = new File(tempdir + compressedName);
+                    File file = new File(tempdir + File.pathSeparator + compressedName);
                     file.getParentFile().mkdirs();
                     if(file.exists() || file.createNewFile()){
                         FileOutputStream fout = new FileOutputStream(file);
