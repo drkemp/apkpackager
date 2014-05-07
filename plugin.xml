@@ -36,7 +36,7 @@
 
     <config-file target="res/xml/config.xml" parent="/widget">
       <feature name="APKPackager">
-        <param name="android-package" value="org.chromium.apkpackager"/>
+        <param name="android-package" value="org.chromium.APKPackager"/>
       </feature>
     </config-file>
   </platform>
