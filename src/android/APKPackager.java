@@ -18,6 +18,7 @@ import java.io.BufferedInputStream;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import kellinwood.security.zipsigner.ZipSigner;
+import android.net.Uri;
 import android.util.Log;
 import com.android.sdklib.build.*;
 
@@ -25,6 +26,7 @@ import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaArgs;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
+import org.apache.cordova.CordovaResourceApi;
 import org.apache.cordova.CordovaWebView;
 import org.json.JSONException;
 
@@ -39,46 +41,56 @@ public class APKPackager  extends CordovaPlugin {
     }
 
     @Override
-    public boolean execute(String action, CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
+    public boolean execute(String action, final CordovaArgs args, final CallbackContext callbackContext) throws JSONException {
         if ("package".equals(action)) {
-            packageApk(args, callbackContext);
+            cordova.getThreadPool().execute(new Runnable() {
+                @Override
+                public void run() {
+                    packageApk(args, callbackContext);
+                }
+            });
             return true;
         }
         return false;
     }
 
     private void packageApk(CordovaArgs args, CallbackContext callbackContext) {
-    	String wwwdir="";
-    	String resdir="";
-    	String workdir="";
+    	File wwwdir=null;
+    	File resdir=null;
+    	File workdir=null;
     	URL publicKeyUrl=null;
     	URL privateKeyUrl=null;
     	String keyPassword="";
-    	
+    
     	try {
-	    	wwwdir = args.getString(0);
-	        resdir = args.getString(1);
-	        workdir= args.getString(2);
-	        publicKeyUrl = new URL( args.getString(3));
-	        privateKeyUrl= new URL( args.getString(3));
+    		CordovaResourceApi cra = webView.getResourceApi();
+    		wwwdir = cra.mapUriToFile(cra.remapUri(Uri.parse(args.getString(0))));
+	        resdir = cra.mapUriToFile(cra.remapUri(Uri.parse(args.getString(1))));
+	        workdir= cra.mapUriToFile(cra.remapUri(Uri.parse(args.getString(2))));
+	        File pbk = cra.mapUriToFile(cra.remapUri(Uri.parse(args.getString(3))));
+	        File pvk = cra.mapUriToFile(cra.remapUri(Uri.parse(args.getString(4))));
+	        publicKeyUrl = pbk.toURI().toURL();
+	        privateKeyUrl= pvk.toURI().toURL();
 	        keyPassword= args.getString(5);
         } catch (Exception e) {
             callbackContext.error("Missing arguments: "+e.getMessage());        	
         }
-        
-        String generatedApkPath = workdir+"test.apk";
-        String signedApkPath=workdir+"test-signed.apk";
-        String resname =workdir+"res.zip";
-        String assetsname =workdir+"assets.zip";
-        String dexname = workdir+"classes.dex";
+        File reszip = new File (workdir, "res.zip");
+        File assetsname = new File(workdir, "assets.zip");
+
+    	String workdirpath=workdir.getAbsolutePath()+"/";
+        String generatedApkPath = workdirpath+"test.apk";
+        String signedApkPath=workdirpath+"test-signed.apk";
+        String dexname = workdirpath+ "classes.dex";
+        String resname = workdirpath+ "res.zip";
 
         // merge the supplied www & res dirs into the dummy project
         // for this to work the relative path of the supplied dir must be the same as the desired path in the APK
         // ie. ./foo/bar.png with be at /foo/bar.png in the APK
-        String tempres = workdir+"tempres";
-        String tempassets = workdir+"tempasset";
+        File tempres = new File(workdir,"tempres");
+        File tempassets = new File(workdir,"tempasset");
         extractToFolder(assetsname, wwwdir);
-        extractToFolder(resname, resdir);
+        extractToFolder(reszip, resdir);
         try {
             mergeDirectory(wwwdir, tempassets);
             mergeDirectory(resdir, tempres);
@@ -86,17 +98,18 @@ public class APKPackager  extends CordovaPlugin {
             Log.e(LOG_TAG, e.getMessage());
             callbackContext.error("Error merging assets: "+e.getMessage());
         }
-
+        
+        mungeConfig(workdir, tempres);
         // take the completed package and make the unsigned APK
         try{
             ApkBuilder b = new ApkBuilder(generatedApkPath,resname,dexname,null,null,null);
-            b.addSourceFolder(new File(tempassets));
-            b.addSourceFolder(new File(tempres));
+            b.addSourceFolder( tempassets);
+            b.addSourceFolder( tempres);
             // now mangle all the XML
-            String targetdir=workdir+"/binres";
+            File targetdir= new File(workdir, "binres");
             mangleResources(workdir, targetdir);
-            b.addFile(new File(targetdir+"resources.arsc"), "resources.arsc");
-            b.addFile(new File(targetdir+"AndroidManifest.xml"),"AndroidManifest.xml");
+            b.addFile(new File(targetdir,"resources.arsc"), "resources.arsc");
+            b.addFile(new File(targetdir,"AndroidManifest.xml"),"AndroidManifest.xml");
             b.sealApk();
         } catch (Exception e) {
             Log.e(LOG_TAG, e.getMessage());
@@ -124,27 +137,29 @@ public class APKPackager  extends CordovaPlugin {
         }
         callbackContext.success(signedApkPath);
     }
-    private void mangleResources(String workdir, String targetdir) {
+    private void mangleResources(File workdir, File targetdir) {
 
+    }
+    
+    private void mungeConfig(File workdir, File tempres) {
+    	// rewrite the app package, app name, permissions
+    	
     }
 
     /* overwrite stuff from a default zip with the things in sourcedir 
     */
-    private void mergeDirectory(String sourceFilesDir, String workdir) 
+    private void mergeDirectory(File srcdir, File workdir) 
             throws FileNotFoundException, IOException {
-        File srcdir = new File(sourceFilesDir);
         File[] files = srcdir.listFiles();
         for(File file : files){
             if(file.isDirectory()) {
-                String path = workdir+File.pathSeparator+file.getPath();
-                File targetDir = new File(path);
+                File targetDir = new File(workdir, file.getPath());
                 targetDir.mkdirs();
-                mergeDirectory(file.getPath(),path);
+                mergeDirectory(file, targetDir);
             } else {
-                String path = workdir+File.pathSeparator+file.getParentFile().getPath();
-                File targetDir = new File(path);
+                File targetDir = new File(workdir, file.getPath());
                 targetDir.mkdirs();
-                File targetFile = new File(targetDir.getPath()+File.pathSeparator+file.getName());
+                File targetFile = new File(targetDir, file.getName());
                 copyFile(file, targetFile);
             }
         }
@@ -167,7 +182,7 @@ public class APKPackager  extends CordovaPlugin {
         }
     }
 
-    private void extractToFolder(String zipfile, String tempdir) {
+    private void extractToFolder(File zipfile, File tempdir) {
     	InputStream inputStream=null;
     	try {
             FileInputStream zipStream = new FileInputStream(zipfile);
@@ -183,10 +198,10 @@ public class APKPackager  extends CordovaPlugin {
                 String compressedName = ze.getName();
 
                 if (ze.isDirectory()) {
-                   File dir = new File(tempdir + File.pathSeparator + compressedName);
+                   File dir = new File(tempdir, compressedName);
                    dir.mkdirs();
                 } else {
-                    File file = new File(tempdir + File.pathSeparator + compressedName);
+                    File file = new File(tempdir, compressedName);
                     file.getParentFile().mkdirs();
                     if(file.exists() || file.createNewFile()){
                         FileOutputStream fout = new FileOutputStream(file);
