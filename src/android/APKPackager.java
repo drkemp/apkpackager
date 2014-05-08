@@ -75,18 +75,17 @@ public class APKPackager  extends CordovaPlugin {
 	        privateKeyUrl= pvk.toURI().toURL();
 	        keyPassword= args.getString(5);
         } catch (Exception e) {
-            callbackContext.error("Missing arguments: "+e.getMessage());        	
+            callbackContext.error("Missing arguments: "+e.getMessage());
             return;
         }
         File reszip = new File (workdir, "res.zip");
         File assetsname = new File(workdir, "assets.zip");
 
-    	String workdirpath=workdir.getAbsolutePath()+"/";
+    	String workdirpath=workdir.getAbsolutePath()+File.pathSeparator;
         String generatedApkPath = workdirpath+"test.apk";
         String signedApkPath=workdirpath+"test-signed.apk";
         String dexname = workdirpath+ "classes.dex";
-        String resname = workdirpath+ "res.zip";
-        
+
         File tempres = new File(workdir,"tempres");
         File tempassets = new File(workdir,"tempasset");
         File mangledResourceDir= new File(workdir, "binres");
@@ -95,12 +94,17 @@ public class APKPackager  extends CordovaPlugin {
         	deleteDir(tempassets);
         	deleteDir(mangledResourceDir);
         } catch (Exception e) {
-            callbackContext.error("Unable to delete dirs: "+e.getMessage());        	
-            return;       	
+            callbackContext.error("Unable to delete dirs: "+e.getMessage());
+            return;
+        }
+        try {
+            extractToFolder(assetsname, tempassets);
+            extractToFolder(reszip, tempres);
+        } catch (Exception e) {
+            callbackContext.error("Unable to extract project: "+e.getMessage());
+            return;
         }
 
-        extractToFolder(assetsname, tempassets);
-        extractToFolder(reszip, tempres);
         try {
             // merge the supplied www & res dirs into the dummy project
             // for this to work the relative path of the supplied dir must be the same as the desired path in the APK
@@ -112,17 +116,33 @@ public class APKPackager  extends CordovaPlugin {
             callbackContext.error("Error merging assets: "+e.getMessage());
             return;
         }
-        mungeConfig(workdir, tempassets, tempres);
+
+        try {
+            mungeConfig(workdir, tempassets, tempres);
+        } catch (Exception e) {
+            Log.e(LOG_TAG, e.getMessage());
+            callbackContext.error("Error updating project: "+e.getMessage());
+            return;
+        }
+
+        try {
+            mangleResources(workdir, mangledResourceDir);
+        } catch (Exception e) {
+            Log.e(LOG_TAG, e.getMessage());
+            callbackContext.error("Error indexing resources: "+e.getMessage());
+            return;
+        }
+
         // take the completed package and make the unsigned APK
-        // ApkBuilder REALLY wants a resource zip file - so hand it a dummy
-        File fakeResZip = new File(workdir,"FakeResourceZipFile.zip");
-        writeZipfile(fakeResZip);
         try{
+            // ApkBuilder REALLY wants a resource zip file in the contructor
+            // but the composite res is not a zip - so hand it a dummy
+            File fakeResZip = new File(workdir,"FakeResourceZipFile.zip");
+            writeZipfile(fakeResZip);
+
             ApkBuilder b = new ApkBuilder(generatedApkPath,fakeResZip.getPath(),dexname,null,null,null);
             b.addSourceFolder( tempassets);
             b.addSourceFolder( tempres);
-            // now mangle all the XML
-            mangleResources(workdir, mangledResourceDir);
             b.addFile(new File(mangledResourceDir,"resources.arsc"), "resources.arsc");
             b.addFile(new File(mangledResourceDir,"AndroidManifest.xml"),"AndroidManifest.xml");
             b.sealApk();
@@ -145,38 +165,40 @@ public class APKPackager  extends CordovaPlugin {
             return;
         }
 
-        // After signing apk , delete unsigned apk
+        // After signing apk , delete intermediate stuff
         try {
             new File(generatedApkPath).delete();
+            deleteDir(tempres);
+            deleteDir(tempassets);
+            deleteDir(mangledResourceDir);
         } catch (Exception e) {
             Log.e(LOG_TAG, e.getMessage());
-            callbackContext.error("ApkBuilder Error: "+e.getMessage());
+            callbackContext.error("Error cleaning up: "+e.getMessage());
             return;
         }
         callbackContext.success(signedApkPath);
     }
+
     private void deleteDir(File dir){
         if(!dir.exists()) return;
-        File [] files = dir.listFiles();
-        if(files != null) {
-            for( File f : files ) {
-    	        if(f.isDirectory()) deleteDir(f);
-    	        else f.delete();
+        if(dir.isDirectory()) {
+            File [] files = dir.listFiles();
+            if(files != null) {
+                for( File f : files ) {
+    	            if(f.isDirectory()) deleteDir(f);
+    	            else f.delete();
+                }
             }
         }
         dir.delete();
     }
-    private void writeZipfile(File zipFile) {
-    	try {
-    		if(zipFile.exists()) zipFile.delete();
-            ZipOutputStream out = new ZipOutputStream(new FileOutputStream(zipFile));
-            ZipEntry e = new ZipEntry("dummydir");
-            out.putNextEntry(e);
-            out.closeEntry();
-            out.close();
-    	} catch(Exception e) {
-    		
-    	}
+    private void writeZipfile(File zipFile) throws IOException {
+        if(zipFile.exists()) zipFile.delete();
+        ZipOutputStream out = new ZipOutputStream(new FileOutputStream(zipFile));
+        ZipEntry e = new ZipEntry("dummydir");
+        out.putNextEntry(e);
+        out.closeEntry();
+        out.close();
     }
     private void mangleResources(File workdir, File targetdir) {
     	//TODO : put useful stuff here
