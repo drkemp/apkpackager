@@ -153,13 +153,12 @@ public class APKPackager  extends CordovaPlugin {
         File[] files = srcdir.listFiles();
         for(File file : files){
             if(file.isDirectory()) {
-                File targetDir = new File(workdir, file.getPath());
+                File targetDir = new File(workdir, file.getName());
                 targetDir.mkdirs();
                 mergeDirectory(file, targetDir);
             } else {
-                File targetDir = new File(workdir, file.getPath());
-                targetDir.mkdirs();
-                File targetFile = new File(targetDir, file.getName());
+                File targetFile = new File(workdir, file.getName());
+                if(targetFile.exists()) targetFile.delete();
                 copyFile(file, targetFile);
             }
         }
@@ -215,7 +214,7 @@ public class APKPackager  extends CordovaPlugin {
                 }
                 zis.closeEntry();
             }
-       } catch (Exception e) {
+        } catch (Exception e) {
             Log.e(LOG_TAG, "Unzip error ", e);
         } finally {
             if (inputStream != null) {
