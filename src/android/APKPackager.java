@@ -8,12 +8,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.nio.channels.*;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import java.io.BufferedInputStream;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
@@ -74,6 +76,7 @@ public class APKPackager  extends CordovaPlugin {
 	        keyPassword= args.getString(5);
         } catch (Exception e) {
             callbackContext.error("Missing arguments: "+e.getMessage());        	
+            return;
         }
         File reszip = new File (workdir, "res.zip");
         File assetsname = new File(workdir, "assets.zip");
@@ -83,37 +86,50 @@ public class APKPackager  extends CordovaPlugin {
         String signedApkPath=workdirpath+"test-signed.apk";
         String dexname = workdirpath+ "classes.dex";
         String resname = workdirpath+ "res.zip";
-
-        // merge the supplied www & res dirs into the dummy project
-        // for this to work the relative path of the supplied dir must be the same as the desired path in the APK
-        // ie. ./foo/bar.png with be at /foo/bar.png in the APK
+        
         File tempres = new File(workdir,"tempres");
         File tempassets = new File(workdir,"tempasset");
-        extractToFolder(assetsname, wwwdir);
-        extractToFolder(reszip, resdir);
+        File mangledResourceDir= new File(workdir, "binres");
         try {
+        	deleteDir(tempres);
+        	deleteDir(tempassets);
+        	deleteDir(mangledResourceDir);
+        } catch (Exception e) {
+            callbackContext.error("Unable to delete dirs: "+e.getMessage());        	
+            return;       	
+        }
+
+        extractToFolder(assetsname, tempassets);
+        extractToFolder(reszip, tempres);
+        try {
+            // merge the supplied www & res dirs into the dummy project
+            // for this to work the relative path of the supplied dir must be the same as the desired path in the APK
+            // ie. ./foo/bar.png with be at /foo/bar.png in the APK
             mergeDirectory(wwwdir, tempassets);
             mergeDirectory(resdir, tempres);
         } catch (Exception e) {
             Log.e(LOG_TAG, e.getMessage());
             callbackContext.error("Error merging assets: "+e.getMessage());
+            return;
         }
-        
-        mungeConfig(workdir, tempres);
+        mungeConfig(workdir, tempassets, tempres);
         // take the completed package and make the unsigned APK
+        // ApkBuilder REALLY wants a resource zip file - so hand it a dummy
+        File fakeResZip = new File(workdir,"FakeResourceZipFile.zip");
+        writeZipfile(fakeResZip);
         try{
-            ApkBuilder b = new ApkBuilder(generatedApkPath,resname,dexname,null,null,null);
+            ApkBuilder b = new ApkBuilder(generatedApkPath,fakeResZip.getPath(),dexname,null,null,null);
             b.addSourceFolder( tempassets);
             b.addSourceFolder( tempres);
             // now mangle all the XML
-            File targetdir= new File(workdir, "binres");
-            mangleResources(workdir, targetdir);
-            b.addFile(new File(targetdir,"resources.arsc"), "resources.arsc");
-            b.addFile(new File(targetdir,"AndroidManifest.xml"),"AndroidManifest.xml");
+            mangleResources(workdir, mangledResourceDir);
+            b.addFile(new File(mangledResourceDir,"resources.arsc"), "resources.arsc");
+            b.addFile(new File(mangledResourceDir,"AndroidManifest.xml"),"AndroidManifest.xml");
             b.sealApk();
         } catch (Exception e) {
             Log.e(LOG_TAG, e.getMessage());
             callbackContext.error("ApkBuilder Error: "+e.getMessage());
+            return;
         }
 
         // sign the APK with the supplied key/cert
@@ -126,6 +142,7 @@ public class APKPackager  extends CordovaPlugin {
         } catch (Exception e) {
             Log.e("Signing apk", "Error: "+e.getMessage());
             callbackContext.error("ZipSigner Error: "+e.getMessage());
+            return;
         }
 
         // After signing apk , delete unsigned apk
@@ -134,16 +151,60 @@ public class APKPackager  extends CordovaPlugin {
         } catch (Exception e) {
             Log.e(LOG_TAG, e.getMessage());
             callbackContext.error("ApkBuilder Error: "+e.getMessage());
+            return;
         }
         callbackContext.success(signedApkPath);
     }
+    private void deleteDir(File dir){
+        if(!dir.exists()) return;
+        File [] files = dir.listFiles();
+        if(files != null) {
+            for( File f : files ) {
+    	        if(f.isDirectory()) deleteDir(f);
+    	        else f.delete();
+            }
+        }
+        dir.delete();
+    }
+    private void writeZipfile(File zipFile) {
+    	try {
+    		if(zipFile.exists()) zipFile.delete();
+            ZipOutputStream out = new ZipOutputStream(new FileOutputStream(zipFile));
+            ZipEntry e = new ZipEntry("dummydir");
+            out.putNextEntry(e);
+            out.closeEntry();
+            out.close();
+    	} catch(Exception e) {
+    		
+    	}
+    }
     private void mangleResources(File workdir, File targetdir) {
-
+    	//TODO : put useful stuff here
+    	writeStringToFile("<dummy />\n",  new File(targetdir,"resources.arsc"));
+    	writeStringToFile("<dummy />\n",  new File(targetdir,"AndroidManifest.xml"));
     }
     
-    private void mungeConfig(File workdir, File tempres) {
-    	// rewrite the app package, app name, permissions
+    private void writeStringToFile(String str, File target) {
+    	FileWriter fw=null;
+    	try {
+    		File dir = target.getParentFile();
+    		if(!dir.exists()) dir.mkdirs();
+			fw = new FileWriter(target);
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			try{
+			fw.close();
+			} catch(Exception e) {}
+		}
     	
+    }
+    
+    private void mungeConfig(File workdir, File tempassets, File tempres) {
+    	// rewrite the app package, app name, permissions
+    	// get stuff from tempassets/manifest.mobile.json
+    	// update strings in tempres
+    	// update AndroidManifest.xml in workdir
     }
 
     /* overwrite stuff from a default zip with the things in sourcedir 
