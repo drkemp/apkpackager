@@ -81,7 +81,7 @@ public class APKPackager  extends CordovaPlugin {
         File reszip = new File (workdir, "res.zip");
         File assetsname = new File(workdir, "assets.zip");
 
-    	String workdirpath=workdir.getAbsolutePath()+File.pathSeparator;
+    	String workdirpath=workdir.getAbsolutePath()+File.separator;
         String generatedApkPath = workdirpath+"test.apk";
         String signedApkPath=workdirpath+"test-signed.apk";
         String dexname = workdirpath+ "classes.dex";
