@@ -4,6 +4,7 @@
 
 package org.chromium;
 
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -11,6 +12,7 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URL;
 import java.nio.channels.*;
 import java.util.zip.ZipInputStream;
@@ -30,6 +32,7 @@ import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPlugin;
 import org.apache.cordova.CordovaResourceApi;
 import org.apache.cordova.CordovaWebView;
+import org.chromium.aapt.Driver;
 import org.json.JSONException;
 
 
@@ -104,6 +107,8 @@ public class APKPackager  extends CordovaPlugin {
             callbackContext.error("Unable to extract project: "+e.getMessage());
             return;
         }
+        
+        boolean success = mangledResourceDir.mkdirs();
 
         try {
             // merge the supplied www & res dirs into the dummy project
@@ -202,7 +207,18 @@ public class APKPackager  extends CordovaPlugin {
     }
     private void mangleResources(File workdir, File targetdir) {
     	//TODO : put useful stuff here
-    	writeStringToFile("<dummy />\n",  new File(targetdir,"resources.arsc"));
+    	Driver d = new Driver(targetdir);
+    	try {
+    		File outputFile = new File(targetdir, "resources.arsc");
+    		OutputStream os = new BufferedOutputStream(new FileOutputStream(outputFile));
+			d.createResourceTable(os, "res");
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     	writeStringToFile("<dummy />\n",  new File(targetdir,"AndroidManifest.xml"));
     }
     
