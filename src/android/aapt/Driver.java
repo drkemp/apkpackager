@@ -35,7 +35,8 @@ public class Driver {
 		//TODO: This, in a loop
 		File resDir = new File(pkgDir, resDirName);
 		String[] resDirs = resDir.list();
-		for (String dir : resDirs) {
+		if (resDirs != null)
+		  for (String dir : resDirs) {
 			File rd = new File(resDir, dir);
 			if (rd.isDirectory()) {
 				String[] dirNameParts = dir.split("-");
