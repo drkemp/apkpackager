@@ -22,6 +22,24 @@
 
   <platform name="android">
     <source-file src="src/android/APKPackager.java" target-dir="src/org/chromium" />
+    <source-file src="src/android/aapt/AaptResourceGroup.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/Chunk.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/Config.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/ConfigVariant.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/Driver.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/Entry.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/Map.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/MapEntry.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/Package.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/ResourceArchive.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/Streamable.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/StringPool.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/Table.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/TableRef.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/Type.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/TypeBundle.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/TypeSpec.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/Value.java" target-dir="src/org/chromium/aapt" />
 
     <source-file src="lib/libs/kellinwood-logging-android-1.4.jar" target-dir="libs" />
     <source-file src="lib/libs/kellinwood-logging-lib-1.1.jar" target-dir="libs" />
