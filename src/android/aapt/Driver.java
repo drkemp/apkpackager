@@ -72,7 +72,7 @@ public class Driver {
 			eventType = parser.getEventType();
 			if (eventType == XmlPullParser.START_TAG) {
 				if ("manifest".equals(parser.getName())) {
-					packageName = parser.getAttributeValue(null, "manifest");
+					packageName = parser.getAttributeValue(null, "package");
 				}
 			}
 			eventType = parser.next();			
