@@ -20,11 +20,13 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import java.io.BufferedInputStream;
 import java.security.PrivateKey;
+import java.security.Security;
 import java.security.cert.X509Certificate;
 import kellinwood.security.zipsigner.ZipSigner;
 import android.net.Uri;
 import android.util.Log;
 import com.android.sdklib.build.*;
+import org.spongycastle.jce.provider.BouncyCastleProvider;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaArgs;
@@ -39,6 +41,10 @@ import org.json.JSONException;
 public class APKPackager  extends CordovaPlugin {
 
     private String LOG_TAG = "APKPackage";
+
+    static {
+        Security.addProvider(new BouncyCastleProvider());
+    }
   
     @Override
     public void initialize(final CordovaInterface cordova, CordovaWebView webView) {
@@ -207,11 +213,11 @@ public class APKPackager  extends CordovaPlugin {
     }
     private void mangleResources(File workdir, File targetdir) {
     	//TODO : put useful stuff here
-    	Driver d = new Driver(targetdir);
+    	Driver d = new Driver(workdir);
     	try {
     		File outputFile = new File(targetdir, "resources.arsc");
     		OutputStream os = new BufferedOutputStream(new FileOutputStream(outputFile));
-			d.createResourceTable(os, "res");
+			d.createResourceTable(os, "tempres");
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
