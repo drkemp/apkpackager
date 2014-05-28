@@ -18,14 +18,16 @@ import android.util.Xml;
 
 public class Driver {
 
-	private File pkgDir;
+	private File srcDir;
+	private File destDir;
 	
-	public Driver(File pkgDir) {
-		this.pkgDir = pkgDir;
+	public Driver(File srcResDir, File destResDir) {
+		this.srcDir = srcResDir;
+		this.destDir = destResDir;
 	}
 	
-	public void createResourceTable(OutputStream output, String resDirName) throws IOException {
-		String pkgAbsolutePath = pkgDir.getAbsolutePath();
+	public void createResourceTable(OutputStream output) throws IOException {
+		String pkgAbsolutePath = srcDir.getAbsolutePath();
 		StringPool topLevelStringPool = new StringPool();
 		topLevelStringPool.setUseUTF8(true);
 		
@@ -33,7 +35,7 @@ public class Driver {
 		HashMap<String, AaptResourceGroup> resourceGroups = new HashMap<String, AaptResourceGroup>();
 
 		//TODO: This, in a loop
-		File resDir = new File(pkgDir, resDirName);
+		File resDir = new File(srcDir, "res");
 		String[] resDirs = resDir.list();
 		if (resDirs != null)
 		  for (String dir : resDirs) {
@@ -63,7 +65,7 @@ public class Driver {
 		
 		String packageName = null;
 		try {
-		File manifestFile = new File(pkgDir, "AndroidManifest.xml");
+		File manifestFile = new File(srcDir, "AndroidManifest.xml");
 		XmlPullParser parser = Xml.newPullParser();
 		parser.setInput(new FileReader(manifestFile));
 		// Get package name
@@ -102,11 +104,11 @@ public class Driver {
 	}
 	
 	public static void main(String[] args) {
-		Driver d = new Driver(new File("/Users/iclelland/MCA4/kktest/platforms/android/bin/temp"));
+		Driver d = new Driver(new File("/Users/iclelland/MCA4/kktest/platforms/android/bin/temp"),new File("/Users/iclelland/MCA4/kktest/platforms/android/bin/temp"));
 		try {
 			File outFile = new File("resources.arsc__");
 			BufferedOutputStream os = new BufferedOutputStream(new FileOutputStream(outFile));
-			d.createResourceTable(os, "res");
+			d.createResourceTable(os);
 			os.close();
 		} catch (IOException e) {
 			e.printStackTrace();

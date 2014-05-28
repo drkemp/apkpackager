@@ -98,10 +98,14 @@ public class APKPackager  extends CordovaPlugin {
         File tempres = new File(workdir,"tempres");
         File tempassets = new File(workdir,"tempasset");
         File mangledResourceDir= new File(workdir, "binres");
+        File finalResDir =new File(mangledResourceDir,"res");
+
         try {
         	deleteDir(tempres);
         	deleteDir(tempassets);
         	deleteDir(mangledResourceDir);
+        	deleteDir(finalResDir);
+        	mangledResourceDir.mkdirs();
         } catch (Exception e) {
             callbackContext.error("Unable to delete dirs: "+e.getMessage());
             return;
@@ -114,8 +118,6 @@ public class APKPackager  extends CordovaPlugin {
             return;
         }
         
-        boolean success = mangledResourceDir.mkdirs();
-
         try {
             // merge the supplied www & res dirs into the dummy project
             // for this to work the relative path of the supplied dir must be the same as the desired path in the APK
@@ -137,7 +139,8 @@ public class APKPackager  extends CordovaPlugin {
         }
 
         try {
-            mangleResources(workdir, mangledResourceDir);
+            copyFile(new File(workdir,"AndroidManifest.xml"), new File(tempres,"AndroidManifest.xml"));
+            mangleResources(tempres, mangledResourceDir);
         } catch (Exception e) {
             Log.e(LOG_TAG, e.getMessage());
             callbackContext.error("Error indexing resources: "+e.getMessage());
@@ -153,7 +156,7 @@ public class APKPackager  extends CordovaPlugin {
 
             ApkBuilder b = new ApkBuilder(generatedApkPath,fakeResZip.getPath(),dexname,null,null,null);
             b.addSourceFolder( tempassets);
-            b.addSourceFolder( tempres);
+            b.addSourceFolder( finalResDir);
             b.addFile(new File(mangledResourceDir,"resources.arsc"), "resources.arsc");
             b.addFile(new File(mangledResourceDir,"AndroidManifest.xml"),"AndroidManifest.xml");
             b.sealApk();
@@ -211,13 +214,13 @@ public class APKPackager  extends CordovaPlugin {
         out.closeEntry();
         out.close();
     }
-    private void mangleResources(File workdir, File targetdir) {
+    private void mangleResources(File srcResDir, File targetdir) {
     	//TODO : put useful stuff here
-    	Driver d = new Driver(workdir);
+    	Driver d = new Driver(srcResDir, targetdir);
     	try {
     		File outputFile = new File(targetdir, "resources.arsc");
     		OutputStream os = new BufferedOutputStream(new FileOutputStream(outputFile));
-			d.createResourceTable(os, "tempres");
+			d.createResourceTable(os);
 		} catch (FileNotFoundException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -225,7 +228,6 @@ public class APKPackager  extends CordovaPlugin {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-    	writeStringToFile("<dummy />\n",  new File(targetdir,"AndroidManifest.xml"));
     }
     
     private void writeStringToFile(String str, File target) {
