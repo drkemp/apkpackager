@@ -28,6 +28,19 @@ public class StringPool extends Chunk {
     	strings.add(string);
     }
     
+    public void addString(String string, boolean mergeDuplicates) {
+    	boolean dupe=false;
+    	for(String s : strings) {
+    		if(s == string) {
+    			dupe=true;
+    			break;
+    		}
+    	}
+    	if(!dupe || !mergeDuplicates) {
+        	strings.add(string);    		
+    	}
+    }
+    
     Vector<Integer> offsets = null;
     int padding = 0;
 
