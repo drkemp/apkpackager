@@ -40,6 +40,7 @@
     <source-file src="src/android/aapt/TypeBundle.java" target-dir="src/org/chromium/aapt" />
     <source-file src="src/android/aapt/TypeSpec.java" target-dir="src/org/chromium/aapt" />
     <source-file src="src/android/aapt/Value.java" target-dir="src/org/chromium/aapt" />
+    <source-file src="src/android/aapt/XMLNode.java" target-dir="src/org/chromium/aapt" />
 
     <source-file src="lib/libs/kellinwood-logging-android-1.4.jar" target-dir="libs" />
     <source-file src="lib/libs/kellinwood-logging-lib-1.1.jar" target-dir="libs" />
@@ -51,6 +52,7 @@
     <source-file src="lib/libs/zipio-lib-1.8.jar" target-dir="libs" />
     <source-file src="lib/libs/zipsigner-lib-1.17.jar" target-dir="libs" />
     <source-file src="lib/libs/zipsigner-lib-optional-1.16.jar" target-dir="libs" />
+    <source-file src="lib/libs/axml-2.0.jar" target-dir="libs" />
 
     <config-file target="res/xml/config.xml" parent="/widget">
       <feature name="APKPackager">
